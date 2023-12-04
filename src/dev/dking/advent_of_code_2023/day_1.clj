@@ -120,13 +120,82 @@
   [input]
   (part-1 (convert-digit-names-to-numbers input)))
 
+(defn get-earliest-digit
+  [char-seq prefix-tree]
+  (loop [remaining-chars char-seq
+         remaining-tree prefix-tree]
+    (when-not (empty? remaining-chars)
+      (let [next-char (first remaining-chars)
+            next-tree-element (get remaining-tree next-char)]
+        (cond
+          (is-digit next-char)
+          next-char
+
+          (map? next-tree-element)
+          (recur (rest remaining-chars) next-tree-element)
+
+          (char? next-tree-element)
+          next-tree-element
+
+          (nil? next-tree-element)
+          (if (= remaining-tree prefix-tree)
+            (recur (rest remaining-chars) prefix-tree)
+            (recur remaining-chars prefix-tree)))))))
+
+(def digits-re-pattern (->> digit-names
+                            (map (fn [[k v]] (str k "|" v)))
+                            (s/join "|")))
+(def digits-forward-regexp (re-pattern digits-re-pattern))
+(def digits-reverse-regexp (re-pattern (apply str (reverse digits-re-pattern))))
+
+
+
+(defn get-first-digit
+  [char-seq]
+  (get-earliest-digit char-seq forward-prefix-tree))
+
+(defn get-first-digit-v2
+  [line]
+  (let [match (re-find digits-forward-regexp line)]
+    (if (= (count match) 1)
+      (first match)
+      (digit-names match))))
+
+(defn get-last-digit
+  [char-seq]
+  (get-earliest-digit (reverse char-seq) reverse-prefix-tree))
+
+(defn get-last-digit-v2
+  [line]
+  (let [match (s/reverse (re-find digits-reverse-regexp (s/reverse line)))]
+    (if (= (count match) 1)
+      (first match)
+      (digit-names match))))
+
+(defn part-2-v2
+  [char-seq]
+  (->> char-seq
+       (partition-by #(= % \newline))
+       (filter #(not= % '(\newline)))
+       (map (fn [line-seq]
+              [(get-first-digit line-seq) (get-last-digit line-seq)]))
+       (map #(apply str %))
+       (map parse-int)
+       (reduce +)))
+
 (comment
+  (def input (slurp (io/resource "day_1.txt")))
   ;; Solutions
   (part-1 (slurp (io/resource "day_1.txt")))
   (part-1-v2 (slurp (io/resource "day_1.txt")))
   (part-2 (slurp (io/resource "day_1.txt")))
+  (part-2-v2 (slurp (io/resource "day_1.txt")))
+  ;; Currently gives 54933, which is too low.
+  ;; I downloaded someone else's solution and ran it, and it gave
+  ;; 54980.
+  ;; Something's not right with my solution. I think I'll start over.
 
-  ;; Scratchwork
+  ;; Scratchwork 
   (def test-input
     "1abc2
 pqr3stu8vwx
@@ -237,4 +306,103 @@ zoneight234
        (reduce +))
 
   forward-prefix-tree
-  reverse-prefix-tree)
+  reverse-prefix-tree
+
+  (def easy "3hello4")
+  (def hard "threehellotwonezzzz")
+  (let [char-seq
+        #_easy
+        #_(reverse easy)
+        #_hard
+        (reverse hard)
+        prefix-tree
+        #_forward-prefix-tree
+        reverse-prefix-tree]
+    (loop [remaining-chars char-seq
+           remaining-tree prefix-tree]
+      (when-not (empty? remaining-chars)
+        (let [next-char (first remaining-chars)
+              next-tree-element (get remaining-tree next-char)]
+          (cond
+            (is-digit next-char)
+            next-char
+
+            (map? next-tree-element)
+            (recur (rest remaining-chars) next-tree-element)
+
+            (char? next-tree-element)
+            next-tree-element
+
+            (nil? next-tree-element)
+            (if (= remaining-tree prefix-tree)
+              (recur (rest remaining-chars) prefix-tree)
+              (recur remaining-chars prefix-tree)))))))
+
+  (get-first-digit hard)
+  (get-last-digit hard)
+  (part-2-v2 test-input-2)
+  (get-first-digit "thretwozzzzz")
+  (get-last-digit "zzzzzztwohree")
+  (get-first-digit "threzzztwo")
+  (get-last-digit "4gc6cskjfptjxbpone")
+  [(get-first-digit "2z") (get-last-digit "2z")]
+  (get-first-digit "seight3qvmq2f1kkfone")  ;; WROOOOOOONG
+  (get-first-digit "fone9")
+
+  (def char-seq (slurp (io/resource "day_1.txt")))
+  (def result
+    (->> char-seq
+         (partition-by #(= % \newline))
+         (filter #(not= % '(\newline)))
+         (map (fn [line-seq]
+                [(get-first-digit line-seq) (get-last-digit line-seq)]))
+         (map #(apply str %))
+         (map parse-int)
+         (reduce + 0)))
+  (doseq [thing result]
+    (println thing))
+
+  (re-find #"[a-z]" (slurp (io/resource "day_1.txt")))
+
+  (def foo (->> char-seq
+                (partition-by #(= % \newline))
+                (filter #(not= % '(\newline)))
+                (map (fn [el]
+                       {:seq el
+                        :string (apply str el)
+                        :first-digit (get-first-digit el)
+                        :last-digit (get-last-digit el)}))))
+  (doseq [el foo]
+    (println el))
+
+  (def outside-calibrations
+    (->> (slurp (io/resource "day_1_calibrations.txt"))
+         (s/split-lines)
+         (map #(Integer/parseInt %))))
+
+  (def my-calibrations
+    (->> (slurp (io/resource "day_1.txt"))
+         (s/split-lines)
+         (map (fn [line]
+                [(get-first-digit line) (get-last-digit line)]))
+         (map #(apply str %))
+         (map #(Integer/parseInt %))))
+
+  (def zipped-calibrations
+    (map vector my-calibrations outside-calibrations))
+
+  (->> zipped-calibrations
+       (map-indexed (fn [i [mine theirs]] [i mine theirs]))
+       (filter (fn [[i mine theirs]]
+                 (not= mine theirs))))
+
+  (re-find digits-forward-regexp "threight9")
+  (s/reverse (re-find digits-reverse-regexp (s/reverse "threight")))
+
+  (->> input
+       (s/split-lines)
+       (map (fn [line]
+              [(re-find digits-forward-regexp line)
+               (s/reverse (re-find digits-reverse-regexp (s/reverse line)))]))
+       (map (fn [[first last]]))))
+
