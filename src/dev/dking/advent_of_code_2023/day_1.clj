@@ -72,6 +72,7 @@
   (def input (slurp (io/resource "day_1.txt")))
   ;; Solutions
   (part-1 input)
+  (part-2 input)
 
   ;; Currently gives 54933, which is too low.
   ;; I downloaded someone else's solution and ran it, and it gave
